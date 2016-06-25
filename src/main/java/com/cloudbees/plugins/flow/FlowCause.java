@@ -26,10 +26,11 @@
 package com.cloudbees.plugins.flow;
 
 import hudson.model.Cause;
+import hudson.model.Run;
 import jenkins.model.Jenkins;
 
 /**
- * @author: <a hef="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
+ * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
 public class FlowCause extends Cause.UpstreamCause {
 
@@ -40,7 +41,7 @@ public class FlowCause extends Cause.UpstreamCause {
     private final String cause;
 
     public FlowCause(FlowRun flowRun, JobInvocation associatedJob) {
-        super(flowRun);
+        super((Run<?,?>)flowRun);
         this.flowRun = flowRun;
         this.cause = flowRun.getParent().getFullName() + "#" + flowRun.getNumber();
         this.associatedJob = associatedJob;

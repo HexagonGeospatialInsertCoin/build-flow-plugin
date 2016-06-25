@@ -41,11 +41,11 @@ import static hudson.model.Result.SUCCESS;
 /**
  * A Builder that will block until a file exists.
  *
- * @author: James Nord
+ * @author James Nord
  */
 public class BlockingBuilder extends Builder {
 
-    public final static File DEFAULT_FILE = new File("target/build_block.txt");
+    public final static File DEFAULT_FILE = new File("target", "build_block.txt");
 
     public final File file;
 

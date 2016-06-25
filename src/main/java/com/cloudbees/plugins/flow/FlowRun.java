@@ -134,7 +134,7 @@ public class FlowRun extends Build<BuildFlow, FlowRun> {
     }
 
     public void doGetDot(StaplerRequest req, StaplerResponse rsp) throws IOException {
-        new DOTExporter().export(rsp.getWriter(), jobsGraph);
+        new DOTExporter<JobInvocation, JobEdge>().export(rsp.getWriter(), jobsGraph);
     }
 
     public synchronized void addBuild(JobInvocation job) throws ExecutionException, InterruptedException {
@@ -150,13 +150,13 @@ public class FlowRun extends Build<BuildFlow, FlowRun> {
     @Override
     public void run() {
         if (buildNeedsWorkspace) {
-            run(new BuildWithWorkspaceRunnerImpl(dsl, dslFile));
+            execute(new BuildWithWorkspaceRunnerImpl(dsl, dslFile));
         } else {
             execute(new FlyweightTaskRunnerImpl(dsl));
         }
     }
 
-    protected class BuildWithWorkspaceRunnerImpl extends AbstractRunner {
+    protected class BuildWithWorkspaceRunnerImpl extends BuildExecution {
 
         private final String dsl;
         private final String dslFile;

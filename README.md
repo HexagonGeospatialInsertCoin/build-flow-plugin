@@ -1,3 +1,11 @@
+Deprecated
+==========
+
+You should consider the pipeline plugin as a replacement as it is actively maintained:
+* https://wiki.jenkins-ci.org/display/JENKINS/Pipeline+Plugin
+* https://github.com/jenkinsci/pipeline-plugin
+
+
 Jenkins Build Flow Plugin
 =========================
 
@@ -47,6 +55,11 @@ You can pass parameters to jobs, and get the resulting `AbstractBuild` when requ
 
     b = build( "job1", param1: "foo", param2: "bar" )
     build( "job2", param1: b.build.number )
+    build(param1: "xxx", param2: "yyy", param3: "zzz", "job3")
+    build(param1: "xxx", "job4", param2: "yyy", param3: "zzz")
+    def myBuildParams = [param1:"xxx", param2:"yyy", param3:"zzz"]
+    build(myBuildParams, "job5")
+
 
 Environment variables from a job can be obtained using the following, which is especially useful for getting things like the checkout revision used by the SCM plugin (`P4_CHANGELIST`, `GIT_REVISION`, etc) :
 
@@ -66,11 +79,14 @@ For example:
     out.println params
     out.println 'Build Object Properties:'
     build.properties.each { out.println "$it.key -> $it.value" }
-
-
+    
+    // output git commit info (git plugin)
+    out.println build.environment.get('GIT_COMMIT')
+    
     // use it in the flow
     build("job1", parent_param1: params["param1"])
     build("job2", parent_workspace:build.workspace)
+    build(params, "job3")
 
 
 ## Guard / Rescue ##
@@ -91,7 +107,7 @@ You may also want to just ignore result of some job, that are optional for your 
         build( "send_twitter_notification" )
     }
 
-The flow will not take care of the triggered build status if it's better than the configured result. This allows you to ignore `UNSTABLE` < `FAILURE` < `ABORTED`
+The flow will disregard the triggered build status if it's better than the configured result. This allows you to ignore `UNSTABLE` < `FAILURE` < `ABORTED`
 
 ## Retry ##
 You can ask the flow to `retry` a job a few times until success. This is equivalent to the retry-failed-job plugin :
@@ -155,6 +171,32 @@ and this can be combined with other orchestration keywords :
             retry 3, {
                 build("job2")
             }
+        }
+    )
+
+### Dynamically generate parallel jobs
+
+You can also generate the jobs you want to execute in parallel:
+
+    listOfJobs = [ "job1", "job2", "job3" ]
+
+    parallel (
+        listOfJobs.collect { job ->
+            { -> build(job) }
+        }
+    )
+
+Or based on a parameter:
+
+    // Assuming your job has a build parameter called "workerParameters"
+    // Each parameter will be given to a new job
+    jobParameters = build.properties.buildVariables.workerParameters
+        .split(",")
+        .collect { param -> param.trim() }
+
+    parallel (
+        jobParameters.collect { param ->
+            { -> build("worker", buildParam:param) }
         }
     )
 

@@ -39,7 +39,7 @@ import java.util.logging.Logger;
 import java.text.DateFormat;
 
 /**
- * @author: <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
+ * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
 public class JobInvocation {
 
@@ -53,7 +53,7 @@ public class JobInvocation {
 
     private transient AbstractProject<?, ? extends AbstractBuild<?, ?>> project;
 
-    private transient AbstractBuild build;
+    private transient Run build;
 
     private transient QueueTaskFuture<? extends AbstractBuild<?, ?>> future;
 
@@ -110,7 +110,15 @@ public class JobInvocation {
     /* package */ boolean abort() {
         def aborted = false
         if (!started) {
-            aborted = future.cancel(false)
+            // Need to search the queue for the correct job and cancel it in
+            // the queue.
+            def queue = Jenkins.instance.queue
+            for (queueItem in queue.items) {
+                if (future == queueItem.getFuture()) {
+                    aborted = queue.cancel(queueItem)
+                    break;
+                }
+            }
         }
         else if (!completed) {
             // as the task has already started we want to be kinder in recording the cause.
@@ -147,11 +155,11 @@ public class JobInvocation {
         return getResult().toString().toLowerCase();
     }
 
-    /* package */ AbstractBuild getFlowRun() {
+    /* package */ Run getFlowRun() {
         return run;
     }
 
-    /* package */ void buildStarted(AbstractBuild build) {
+    /* package */ void buildStarted(Run build) {
         this.started = true;
         this.build = build;
         this.buildNumber = build.getNumber();

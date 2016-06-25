@@ -26,10 +26,11 @@
 package com.cloudbees.plugins.flow
 
 import hudson.model.Result
-import org.jvnet.hudson.test.Bug
+import org.jvnet.hudson.test.Issue
 
 import static hudson.model.Result.SUCCESS
 import static hudson.model.Result.FAILURE
+import jenkins.model.Jenkins
 import hudson.model.Job
 import hudson.model.Action
 import hudson.model.ParametersAction
@@ -41,17 +42,20 @@ import hudson.model.StringParameterDefinition
 import hudson.model.FreeStyleProject
 
 import static hudson.model.Result.UNSTABLE
+import org.junit.Test
 
 class BuildTest extends DSLTestCase {
 
+    @Test
     public void testUnknownJob() {
         def flow = run("""
             build("unknown")
         """)
         assert FAILURE == flow.result
-        assertLogContains("Item unknown not found (or isn't a job).", flow)
+        jenkinsRule.assertLogContains("Item unknown not found (or isn't a job).", flow)
     }
 
+    @Test
     public void testDisabledJob() {
         def disabledJob = createJob("disabledJob")
         disabledJob.disable()
@@ -60,10 +64,11 @@ class BuildTest extends DSLTestCase {
             build("disabledJob")
         """)
 
-        assertBuildStatus(FAILURE, flow);
-        assertLogContains("Could not schedule job disabledJob, ensure it is not already queued with the same parameters or is not disabled", flow)
+        jenkinsRule.assertBuildStatus(FAILURE, flow);
+        jenkinsRule.assertLogContains("Could not schedule job disabledJob, ensure it is not already queued with the same parameters or is not disabled", flow)
     }
 
+    @Test
     public void testSingleBuild() {
         Job job1 = createJob("job1")
         def flow = run("""
@@ -73,6 +78,7 @@ class BuildTest extends DSLTestCase {
         assert SUCCESS == flow.result
     }
 
+    @Test
     public void testBuildWithParams() {
         Job job1 = createJob("job1")
         def flow = run("""
@@ -86,6 +92,7 @@ class BuildTest extends DSLTestCase {
         assert SUCCESS == flow.result
     }
 
+    @Test
     public void testBuildWithParamsAsMap() {
         Job job1 = createJob("job1")
         def flow = run("""
@@ -98,6 +105,7 @@ class BuildTest extends DSLTestCase {
         assert SUCCESS == flow.result
     }
 
+    @Test
     public void testJobFailure() {
         Job willFail = createFailJob("willFail");
         def flow = run("""
@@ -108,6 +116,7 @@ class BuildTest extends DSLTestCase {
         assert FAILURE == flow.result
     }
 
+    @Test
     public void testJobUnstable() {
         Job unstable = createUnstableJob("unstable");
         def flow = run("""
@@ -118,6 +127,7 @@ class BuildTest extends DSLTestCase {
         assert UNSTABLE == flow.result
     }
 
+    @Test
     public void testSequentialBuilds() {
         def jobs = createJobs(["job1", "job2", "job3"])
         def flow = run("""
@@ -130,6 +140,7 @@ class BuildTest extends DSLTestCase {
         println flow.jobsGraph.edgeSet()
     }
 
+    @Test
     public void testSequentialBuildsWithFailure() {
         def jobs = createJobs(["job1", "job2", "job3"])
         def willFail = createFailJob("willFail")
@@ -148,6 +159,7 @@ class BuildTest extends DSLTestCase {
         println flow.jobsGraph.edgeSet()
     }
 
+    @Test
     public void testParametersFromBuild() {
         Job job1 = createJob("job1")
         Job job2 = createJob("job2")
@@ -164,6 +176,7 @@ class BuildTest extends DSLTestCase {
         assert SUCCESS == flow.result
     }
 
+    @Test
     public void testParametersFromBuildWithDefaultValues() {
         FreeStyleProject job1 = createJob("job1")
         def parametersDefinitions = new ParametersDefinitionProperty(new StringParameterDefinition("param1", "0"), new StringParameterDefinition("param2", "0"))
@@ -182,7 +195,8 @@ class BuildTest extends DSLTestCase {
         assert SUCCESS == flow.result
     }
 
-    @Bug(17199)
+    @Issue("JENKINS-17199")
+    @Test
     public void testImportStatement() {
         def flow = run("""
             import java.util.Date;
@@ -190,5 +204,20 @@ class BuildTest extends DSLTestCase {
         """)
         assert SUCCESS == flow.result
         assert flow.log.contains("Hello from date: ")
+    }
+
+    @Test
+    public void testParallelThreadName() {
+        BuildFlow flow = new BuildFlow(Jenkins.instance, "project_name")
+        flow.dsl = """
+            parallel(
+                    { println Thread.currentThread().name }
+            );
+        """
+        flow.onCreatedFromScratch() // need this to updateTransientActions
+        def build = flow.scheduleBuild2(0).get()
+
+        assert SUCCESS == build.result
+        assert build.log.contains("BuildFlow parallel statement thread for project_name")
     }
 }
